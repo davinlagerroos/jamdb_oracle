@@ -121,6 +121,14 @@ handle_login_resp(State = #oraclient{socket=Socket}, Timeout) ->
         {ok, ?TNS_REFUSE, BinaryData} ->
             io:format("~s~n", [BinaryData]),
             handle_error(remote, BinaryData, State);
+        {ok, ?TNS_REDIRECT, BinaryData} ->
+            gen_tcp:shutdown(Socket, read_write),
+            {match, [{Start, Length}, _]} = re:run(BinaryData, "(?<=HOST\=)([^\)]*)"),
+            RedirectHost = lists:sublist(binary_to_list(BinaryData), Start + 1, Length),
+            Opts = State#oraclient.env,
+            NewHost = {host, RedirectHost},
+            NewOpts = lists:keyreplace(host, 1, Opts, NewHost),
+            connect(NewOpts, Timeout);
         {error, Type, Reason} ->
             handle_error(Type, Reason, State)
     end.
@@ -280,6 +288,9 @@ recv(Socket, Timeout) ->
 
 recv(Socket, Timeout, Buffer, Data) ->
     case ?DECODER:decode_packet(Buffer) of
+        {ok, ?TNS_REDIRECT, PacketBody, Rest} ->
+            {ok, ?TNS_DATA, DataPacket, <<>>} = ?DECODER:decode_packet(Rest),
+            {ok, ?TNS_REDIRECT, DataPacket};
         {ok, Type, PacketBody, <<>>} ->
             {ok, Type, <<Data/bits, PacketBody/bits>>};
         {ok, ?TNS_DATA, PacketBody, Rest} ->
