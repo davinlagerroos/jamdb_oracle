@@ -288,9 +288,6 @@ recv(Socket, Timeout) ->
 
 recv(Socket, Timeout, Buffer, Data) ->
     case ?DECODER:decode_packet(Buffer) of
-        {ok, ?TNS_REDIRECT, PacketBody, Rest} ->
-            {ok, ?TNS_DATA, DataPacket, <<>>} = ?DECODER:decode_packet(Rest),
-            {ok, ?TNS_REDIRECT, DataPacket};
         {ok, Type, PacketBody, <<>>} ->
             {ok, Type, <<Data/bits, PacketBody/bits>>};
         {ok, ?TNS_DATA, PacketBody, Rest} ->

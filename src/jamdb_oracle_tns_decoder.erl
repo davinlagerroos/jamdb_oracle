@@ -16,7 +16,16 @@ decode_packet(<<PacketSize:16, 0:16, ?TNS_DATA, 0:8, 0:16, _DataFlags:16, Rest/b
         _ ->
             {error, more}
     end;
-
+decode_packet(<<PacketSize:16, _Checksum:16, ?TNS_REDIRECT, _Flags:8, _HeaderChecksum:16, Payload/bits>>) ->
+    BodySizeBits = (PacketSize-8) * 8,
+    <<DataPacketSize:BodySizeBits, DataPacket/bits>> = Payload,
+    %DataPacketSizeInBits = DataPacketSize * 8,
+    case decode_packet(DataPacket) of
+        {ok, ?TNS_DATA, DataPacketBody, <<>>} ->
+            {ok, ?TNS_REDIRECT, DataPacketBody, <<>>};
+        _ ->
+            {error, more}
+    end;
 decode_packet(<<PacketSize:16, _Checksum:16, PacketType:8, _Flags:8, _HeaderChecksum:16, Rest/bits>>) ->
     BodySize = PacketSize-8,
     case Rest of
