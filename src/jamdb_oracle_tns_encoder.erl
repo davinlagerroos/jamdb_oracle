@@ -201,34 +201,29 @@ encode_record(close, Cursors) ->
     (encode_ub2(?TTI_LOGOFF))/binary
     >>.
 
-tns_string([_Host, _Port, _User, _Password, _Sid, {service_name, ServiceName}, _AppName] = EnvOpts) when length(ServiceName) > 0 ->
-  {ok, UserHost}  = inet:gethostname(),
-  User            = proplists:get_value(user, EnvOpts),
-  Host            = proplists:get_value(host, EnvOpts, ?DEF_HOST),
-  Port            = proplists:get_value(port, EnvOpts, ?DEF_PORT),
-  ServiceName     = proplists:get_value(service_name, EnvOpts),
-  AppName         = proplists:get_value(app_name, EnvOpts, "jamdb"),
-  unicode:characters_to_binary(
-  "(DESCRIPTION=(CONNECT_DATA=(SERVICE_NAME="++ServiceName++
-  ")(CID=(PROGRAM="++AppName++
-  ")(HOST="++UserHost++")(USER="++User++
-  ")))(ADDRESS=(PROTOCOL=TCP)(HOST="++Host++
-  ")(PORT="++integer_to_list(Port)++")))")
-  ;
-tns_string([_Host, _Port, _User, _Password, {sid, Sid}, _ServiceName, _AppName] = EnvOpts) when length(Sid) > 0 ->
-  {ok, UserHost}  = inet:gethostname(),
-  User            = proplists:get_value(user, EnvOpts),
-  Host            = proplists:get_value(host, EnvOpts, ?DEF_HOST),
-  Port            = proplists:get_value(port, EnvOpts, ?DEF_PORT),
-  Sid             = proplists:get_value(sid, EnvOpts, ?DEF_SID),
-  AppName         = proplists:get_value(app_name, EnvOpts, "jamdb"),
-  unicode:characters_to_binary(
-  "(DESCRIPTION=(CONNECT_DATA=(SID="++Sid++
-  ")(CID=(PROGRAM="++AppName++
-  ")(HOST="++UserHost++")(USER="++User++
-  ")))(ADDRESS=(PROTOCOL=TCP)(HOST="++Host++
-  ")(PORT="++integer_to_list(Port)++")))")
-  .
+tns_string(EnvOpts) ->
+    {ok, UserHost}  = inet:gethostname(),
+    User            = proplists:get_value(user, EnvOpts),
+    Host            = proplists:get_value(host, EnvOpts, ?DEF_HOST),
+    Port            = proplists:get_value(port, EnvOpts, ?DEF_PORT),
+    AppName         = proplists:get_value(app_name, EnvOpts, "jamdb"),
+    unicode:characters_to_binary(
+    "(DESCRIPTION=(CONNECT_DATA="++
+    service_string(EnvOpts)++
+    "(CID=(PROGRAM="++AppName++
+    ")(HOST="++UserHost++")(USER="++User++
+    ")))(ADDRESS=(PROTOCOL=TCP)(HOST="++Host++
+    ")(PORT="++integer_to_list(Port)++")))").
+
+service_string(EnvOpts) ->
+  ServiceName  = proplists:get_value(service_name, EnvOpts),
+  Sid          = proplists:get_value(sid, EnvOpts),
+  case {ServiceName, Sid} of
+    {_, []} -> "(SERVICE_NAME="++ServiceName++")";
+    {[], _} -> "(SID="++Sid++")";
+    _       -> ""
+  end.
+
 
 setopts(all8, N) ->
     lists:nth(N,[[1,0,0,0,0,0,0,1,0,0,0,0,0],[1,1,0,0,0,0,0,0,0,0,0,0,0],[0,10,0,0,0,0,0,1,0,0,0,0,0]]).
